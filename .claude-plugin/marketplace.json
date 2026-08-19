@@ -1,0 +1,23 @@
+{
+  "name": "hector-plugin-test",
+  "owner": {
+    "name": "Hector AI",
+    "email": "karup@hectorai.live"
+  },
+  "metadata": {
+    "description": "Test marketplace for verifying Hector plugin installation",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "hector-test",
+      "description": "Minimal test plugin used to verify that Hector skills install and load correctly from a GitHub URL.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/hello-hector",
+        "./skills/connection-check"
+      ]
+    }
+  ]
+}

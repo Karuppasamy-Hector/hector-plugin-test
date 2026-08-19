@@ -1,0 +1,9 @@
+{
+  "name": "hector-test",
+  "version": "0.1.0",
+  "description": "Minimal test plugin used to verify that Hector skills install and load correctly from a GitHub URL.",
+  "author": {
+    "name": "Hector AI",
+    "email": "karup@hectorai.live"
+  }
+}

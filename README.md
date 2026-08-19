@@ -1,110 +1,94 @@
-# Hector MCP Plugin — Connection Test
+# Hector Plugin — Test
 
-A deliberately minimal [MCP](https://modelcontextprotocol.io) server used to
-verify that a Hector plugin can connect from **Claude** and **ChatGPT**.
+A minimal test plugin that verifies Hector skills install and load correctly
+from a GitHub URL.
 
-This is a connectivity harness, not the real plugin. It establishes the
-structure the full plugin will use.
+There is **no source code and no server here** — a plugin is just markdown
+files plus a manifest. The client reads this repo directly.
 
-## Why it is shaped this way
+## What is in this repo
 
-| Decision | Reason |
-|---|---|
-| **Streamable HTTP** transport | Neither Claude nor ChatGPT can launch a local process. Both need a remote HTTPS endpoint, so stdio is not an option. |
-| **Stateless** (no session ids) | Session handling is the most common cause of "connects, then immediately drops" with third-party clients. Not needed for a test. |
-| Tools named **`search`** and **`fetch`** | ChatGPT's connector flow expects these names for its deep-research path. Claude is happy with any tool names, so this satisfies both. |
-| Skills exposed **through tools**, not MCP prompts | ChatGPT consumes **tools only** — MCP prompts and resources are invisible there. Skills must be reachable via a tool call to work in both clients. |
-
-That last row is the important one for the team: it is the architectural
-constraint the full plugin inherits.
-
-## Tools
-
-| Tool | Purpose |
-|---|---|
-| `ping` | Connectivity check. Echoes a message with a server timestamp. |
-| `search` | Search skills by keyword. Empty query lists all of them. |
-| `fetch` | Return the full markdown body of one skill by id. |
-
-## Run locally
-
-```bash
-npm install
-npm start
+```
+.claude-plugin/
+  marketplace.json      Lists the plugin and where its skills live
+  plugin.json           Plugin name, version, author
+skills/
+  hello-hector/
+    SKILL.md            "The plugin works" smoke test
+  connection-check/
+    SKILL.md            Troubleshooting checklist
 ```
 
-Then verify:
+## How to install
 
-```bash
-curl -s localhost:3000/health
+Add this repo by URL:
+
+```
+https://github.com/Karuppasamy-Hector/hector-plugin-test
 ```
 
-## Expose it publicly
-
-Both clients need a public HTTPS URL — `localhost` will not work.
+In Claude Code:
 
 ```bash
-ngrok http 3000
+/plugin marketplace add Karuppasamy-Hector/hector-plugin-test
 ```
 
-Your MCP endpoint is the forwarding URL with `/mcp` appended, for example
-`https://<subdomain>.ngrok-free.app/mcp`.
+```bash
+/plugin install hector-test@hector-plugin-test
+```
 
-## Connect from Claude
+## How to check it worked
 
-1. Go to **Settings → Connectors → Add custom connector**.
-2. Paste the public `/mcp` URL.
-3. Leave authentication empty — this test server is intentionally open.
-4. Ask Claude: *"use the ping tool"*, then *"search for hector skills"*.
+1. Run `/plugin` and confirm **hector-test** is listed as installed.
+2. Ask: *"test the Hector plugin"* — this should trigger the
+   `hello-hector` skill.
+3. The reply should say the plugin is installed and working, quoting
+   text from `skills/hello-hector/SKILL.md`.
 
-## Connect from ChatGPT
-
-1. Enable **Settings → Connectors** (developer mode may be required).
-2. Add a connector pointing at the same public `/mcp` URL.
-3. No authentication.
-4. Ask it to search, then fetch `hello-hector`.
+If a skill does not appear, the `connection-check` skill lists what to
+verify.
 
 ## Adding a skill
 
-Drop a markdown file into `skills/`:
+1. Create `skills/<your-skill>/SKILL.md`:
 
 ```markdown
 ---
-id: my-skill
-title: My Skill
-description: One line describing when to use this.
+name: your-skill
+description: What it does and when to use it. This sentence is how the model decides to trigger the skill, so be specific.
 ---
 
-# My Skill
+# Your Skill
 
-Body text returned by `fetch`.
+Instructions for the model.
 ```
 
-Skills are read from disk per request, so a new file is picked up without a
-restart. `id` falls back to the filename if omitted.
+2. Add the path to the `skills` array in
+   `.claude-plugin/marketplace.json`:
 
-## Tests
-
-```bash
-npm test
+```json
+"skills": [
+  "./skills/hello-hector",
+  "./skills/connection-check",
+  "./skills/your-skill"
+]
 ```
 
-Six smoke tests drive the real MCP protocol over an in-memory transport,
-covering tool registration, `ping`, `search` (listing and filtering), and
-`fetch` (success and unknown-id error).
+3. Commit and push. Re-install the plugin to pick up the change.
 
-## Layout
+### Rules that matter
 
-```
-src/server.js   HTTP entrypoint, /mcp and /health routes
-src/mcp.js      MCP server and tool definitions
-src/skills.js   Loads and searches markdown skills
-skills/         Skill markdown files
-test/           Smoke tests
-```
+- The folder name and the `name:` in frontmatter **must match**.
+- The file must be named exactly `SKILL.md`.
+- `description` is required — it is what makes the skill trigger.
+- Every skill folder must be listed in `marketplace.json`.
 
-## Security note
+## Note on ChatGPT
 
-This server has **no authentication** and is safe only as a throwaway
-connectivity test. Do not put real data in `skills/` while it is publicly
-tunnelled. The production plugin needs auth before it carries anything real.
+This plugin format is Claude's. ChatGPT does not read plugin repos this
+way — it connects to MCP servers over HTTPS and consumes **tools only**.
+
+So for skills to work in ChatGPT, an MCP server has to expose them
+through a tool call (for example `search` and `fetch` tools that return
+skill text). That server is a separate piece of work from this repo —
+this repo is the content those tools would serve.
